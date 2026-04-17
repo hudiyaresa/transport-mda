@@ -1,0 +1,15 @@
+mappings:
+  - match: "airflow.dag.*.*.duration"
+    name: "airflow_dag_duration_seconds"
+    labels:
+      dag_id: "$1"
+      task_id: "$2"
+  - match: "airflow.scheduler.tasks.running"
+    name: "airflow_scheduler_tasks_running"
+  - match: "airflow.scheduler.tasks.starving"
+    name: "airflow_scheduler_tasks_starving"
+  - match: "airflow.task_instance_created.*.*"
+    name: "airflow_task_instance_created_total"
+    labels:
+      dag_id: "$1"
+      task_id: "$2"

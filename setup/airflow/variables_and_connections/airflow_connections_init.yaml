@@ -1,0 +1,46 @@
+# ============================================================
+# Airflow Connections — GIS Transport MDA
+# IMPORTANT: Format is dict-keyed (conn_id as key), NOT list.
+# This matches what `airflow connections import` expects.
+# Imported via: docker exec airflow-webserver airflow connections import /init/variables_and_connections/airflow_connections_init.yaml
+# ============================================================
+
+transport-source-db-conn:
+  conn_type: postgres
+  description: Source PostgreSQL — raw trip events
+  host: sources
+  login: postgres
+  password: postgres
+  port: 5432
+  schema: transport_db
+  extra: ''
+
+transport-warehouse-db-conn:
+  conn_type: postgres
+  description: Warehouse PostgreSQL — enriched trips and ML metrics
+  host: sources
+  login: postgres
+  password: postgres
+  port: 5432
+  schema: transport_db
+  extra: ''
+
+s3-conn:
+  conn_type: aws
+  description: MinIO S3-compatible data lake
+  host: ''
+  login: minio
+  password: minio123
+  port: null
+  schema: ''
+  extra: '{"endpoint_url": "http://minio:9000"}'
+
+spark-conn:
+  conn_type: spark
+  description: Spark standalone master
+  host: spark://spark-master
+  login: ''
+  password: null
+  port: 7077
+  schema: ''
+  extra: ''

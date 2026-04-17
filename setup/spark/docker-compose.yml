@@ -1,0 +1,40 @@
+version: '3.8'
+
+# ============================================================
+# Spark Standalone Cluster
+# Network "airflow-networks" is created by setup/airflow/docker-compose.yml
+# and referenced here as external so all containers can talk to each other.
+# ============================================================
+
+services:
+  spark-master:
+    image: apache/spark:latest
+    container_name: spark-master
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "9091:8080"   # Spark Master Web UI
+      - "7077:7077"   # Spark Master port (used by spark-conn in Airflow)
+    volumes:
+      - ./jars:/opt/spark/jars      
+    networks:
+      - airflow-networks
+
+  spark-worker:
+    image: apache/spark:latest
+    container_name: spark-worker
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 4g
+      SPARK_MASTER_URL: spark://spark-master:7077
+    volumes:
+      - ./jars:/opt/spark/jars      
+    networks:
+      - airflow-networks
+
+networks:
+  airflow-networks:
+    external: true

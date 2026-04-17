@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  fare-api:
+    build: .
+    container_name: fare-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    networks:
+      - airflow-networks
+    restart: unless-stopped
+
+networks:
+  airflow-networks:
+    external: true
