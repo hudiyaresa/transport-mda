@@ -37,13 +37,35 @@ services:
     environment:
       JUPYTER_ENABLE_LAB: "yes"
       JUPYTER_TOKEN: "transport123"
+      # DB credentials so the notebook can connect to PostgreSQL directly
+      PG_HOST: sources
+      PG_PORT: "5432"
+      PG_DB: transport_db
+      PG_USER: postgres
+      PG_PASSWORD: postgres
     volumes:
       - ../../notebooks:/home/jovyan/work
     command: >
-      bash -c "pip install --quiet geopandas folium psycopg2-binary sqlalchemy &&
+      bash -c "pip install --quiet geopandas folium psycopg2-binary sqlalchemy seaborn &&
                start-notebook.sh --NotebookApp.token='transport123'"
     networks:
       - airflow-networks
+
+  # Metabase: open-source BI/dashboard tool.
+  # Connect it to PostgreSQL (sources:5432/transport_db) via the UI on first start.
+  # First-run setup wizard: http://localhost:3000
+  metabase:
+    image: metabase/metabase:v0.49.5
+    container_name: metabase
+    ports:
+      - "3002:3000"
+    environment:
+      MB_DB_TYPE: h2   # uses embedded H2 for its own metadata (no extra PG needed)
+    volumes:
+      - metabase-data:/metabase-data
+    networks:
+      - airflow-networks
+    restart: unless-stopped
 
 networks:
   airflow-networks:
@@ -53,3 +75,6 @@ volumes:
   grafana-data:
     driver: local
     name: grafana-data
+  metabase-data:
+    driver: local
+    name: metabase-data
