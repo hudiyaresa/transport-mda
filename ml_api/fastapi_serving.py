@@ -7,11 +7,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel, Field
 from pyspark.ml import PipelineModel
 from pyspark.ml.regression import GBTRegressionModel
 from pyspark.sql import SparkSession
+from prometheus_client import Counter, Histogram, CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -24,30 +24,64 @@ S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY',      'minio')
 S3_SECRET_KEY = os.getenv('S3_SECRET_KEY',      'minio123')
 MODEL_VERSION = os.getenv('MODEL_VERSION',      'gbt_fare_latest')
 
-REQUEST_COUNT   = Counter('fare_requests_total', 'Total prediction requests', ['status'])
-REQUEST_LATENCY = Histogram('fare_request_latency_seconds', 'Latency',
-                            buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
+REGISTRY = CollectorRegistry()
+REQUEST_COUNT   = Counter(
+    'fare_requests_total', 'Total prediction requests', ['status'], registry=REGISTRY,
+)
+REQUEST_LATENCY = Histogram(
+    'fare_request_latency_seconds', 'Request latency in seconds',
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
+    registry=REGISTRY,
+)
 
 spark = pipeline_model = fare_model = None
 
 
+def _build_spark() -> SparkSession:
+    return (
+        SparkSession.builder
+        .appName('FareServing')
+        .master(SPARK_MASTER)
+        .config('spark.hadoop.fs.s3a.access.key',             S3_ACCESS_KEY)
+        .config('spark.hadoop.fs.s3a.secret.key',             S3_SECRET_KEY)
+        .config('spark.hadoop.fs.s3a.endpoint',               S3_ENDPOINT)
+        .config('spark.hadoop.fs.s3a.impl',                   'org.apache.hadoop.fs.s3a.S3AFileSystem')
+        .config('spark.hadoop.fs.s3a.path.style.access',      'true')
+        .config('spark.hadoop.fs.s3a.connection.ssl.enabled', 'false')
+        .getOrCreate()
+    )
+
+
+def _try_load_model() -> bool:
+    """Attempt to load pipeline + model from MinIO. Returns True on success."""
+    global spark, pipeline_model, fare_model
+    try:
+        if spark is None:
+            spark = _build_spark()
+            spark.sparkContext.setLogLevel('WARN')
+        pipeline_model = PipelineModel.load(PIPE_PATH)
+        fare_model     = GBTRegressionModel.load(MODEL_PATH)
+        log.info('Model loaded successfully — version: %s', MODEL_VERSION)
+        return True
+    except Exception as e:
+        log.warning('Model not loaded (will retry on next request): %s', e)
+        pipeline_model = None
+        fare_model     = None
+        return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global spark, pipeline_model, fare_model
-    spark = (SparkSession.builder.appName('FareServing').master(SPARK_MASTER)
-             .config('spark.hadoop.fs.s3a.access.key',             S3_ACCESS_KEY)
-             .config('spark.hadoop.fs.s3a.secret.key',             S3_SECRET_KEY)
-             .config('spark.hadoop.fs.s3a.endpoint',               S3_ENDPOINT)
-             .config('spark.hadoop.fs.s3a.impl',                   'org.apache.hadoop.fs.s3a.S3AFileSystem')
-             .config('spark.hadoop.fs.s3a.path.style.access',      'true')
-             .config('spark.hadoop.fs.s3a.connection.ssl.enabled', 'false')
-             .getOrCreate())
+    # Start Spark and attempt model load at startup.
+    # If the model isn't in MinIO yet, log a warning but don't crash —
+    # the model will be loaded lazily on the first /predict request.
+    global spark
+    spark = _build_spark()
     spark.sparkContext.setLogLevel('WARN')
-    pipeline_model = PipelineModel.load(PIPE_PATH)
-    fare_model     = GBTRegressionModel.load(MODEL_PATH)
-    log.info('Model server ready — version: %s', MODEL_VERSION)
+    _try_load_model()
     yield
-    spark.stop()
+    if spark:
+        spark.stop()
 
 
 app = FastAPI(title='Jakarta Fare Prediction API', version='1.0.0', lifespan=lifespan)
@@ -70,24 +104,48 @@ class TripInput(BaseModel):
 
 @app.get('/health')
 def health():
-    return {'status': 'ok' if fare_model else 'not_loaded', 'model_version': MODEL_VERSION}
+    loaded = fare_model is not None
+    return {
+        'status':        'ok' if loaded else 'model_not_loaded',
+        'model_version': MODEL_VERSION if loaded else None,
+        'hint':          None if loaded else 'Run fare_prediction_pipeline DAG first, then POST /reload',
+    }
+
+
+@app.post('/reload')
+def reload_model():
+    """Manually trigger a model reload from MinIO. Call this after retraining."""
+    success = _try_load_model()
+    if success:
+        return {'status': 'reloaded', 'model_version': MODEL_VERSION}
+    raise HTTPException(503, f'Model not found at {MODEL_PATH}. Run fare_prediction_pipeline first.')
 
 
 @app.post('/predict')
 def predict(trip: TripInput):
-    if not fare_model:
-        raise HTTPException(503, 'Model not loaded')
+    # Lazy load: if model wasn't available at startup, try now
+    if fare_model is None:
+        if not _try_load_model():
+            raise HTTPException(
+                503,
+                'Model not loaded. Run fare_prediction_pipeline DAG first, '
+                'then POST /reload or restart the container.',
+            )
     t0 = time.perf_counter()
     try:
-        df          = spark.createDataFrame([trip.dict()])
+        df          = spark.createDataFrame([trip.model_dump()])
         transformed = pipeline_model.transform(df)
         log_pred    = fare_model.transform(transformed).select('prediction').collect()[0][0]
         fare_idr    = round((math.expm1(log_pred)) / 500) * 500
         elapsed_ms  = (time.perf_counter() - t0) * 1000
         REQUEST_COUNT.labels(status='ok').inc()
         REQUEST_LATENCY.observe(elapsed_ms / 1000)
-        return {'predicted_fare_idr': fare_idr, 'model_version': MODEL_VERSION,
-                'distance_km': trip.distance_km, 'processing_ms': round(elapsed_ms, 2)}
+        return {
+            'predicted_fare_idr': fare_idr,
+            'model_version':      MODEL_VERSION,
+            'distance_km':        trip.distance_km,
+            'processing_ms':      round(elapsed_ms, 2),
+        }
     except Exception as e:
         REQUEST_COUNT.labels(status='error').inc()
         raise HTTPException(500, str(e))
@@ -95,7 +153,7 @@ def predict(trip: TripInput):
 
 @app.get('/metrics', response_class=PlainTextResponse, include_in_schema=False)
 def metrics():
-    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return PlainTextResponse(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 
 if __name__ == '__main__':
