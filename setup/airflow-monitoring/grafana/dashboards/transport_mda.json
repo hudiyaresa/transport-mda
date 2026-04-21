@@ -1,0 +1,684 @@
+{
+  "uid": "gis-transport-mda",
+  "title": "GIS Transport MDA",
+  "tags": [
+    "airflow",
+    "fare-api",
+    "transport"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Airflow \u2014 Pipeline Health",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Scheduler Tasks Running",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 10,
+                "color": "yellow"
+              },
+              {
+                "value": 20,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "airflow_scheduler_tasks_running",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Executor Running Tasks",
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 8,
+                "color": "yellow"
+              },
+              {
+                "value": 16,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "airflow_executor_running_tasks",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Executor Open Slots",
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 4,
+                "color": "yellow"
+              },
+              {
+                "value": 8,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "airflow_executor_open_slots",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Starving Tasks",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "airflow_scheduler_tasks_starving",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Task Completions by DAG (success)",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(airflow_task_instance_finish_total{state='success'}[5m])",
+          "legendFormat": "{{dag_id}}.{{task_id}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Task Failures by DAG",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(airflow_task_instance_finish_total{state='failed'}[5m])",
+          "legendFormat": "{{dag_id}}.{{task_id}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "DAG Run Duration \u2014 Successful Runs",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "airflow_dagrun_duration_success_seconds",
+          "legendFormat": "{{dag_id}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Fare Prediction API",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Total Predictions (ok)",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "fare_requests_total{status='ok'}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Total Errors",
+      "gridPos": {
+        "x": 6,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "fare_requests_total{status='error'}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "P95 Latency",
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.5,
+                "color": "yellow"
+              },
+              {
+                "value": 1.0,
+                "color": "red"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "s"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(fare_request_latency_seconds_bucket[5m]))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Request Rate (req/min)",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(fare_requests_total{status='ok'}[1m]) * 60",
+          "legendFormat": "success",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "rate(fare_requests_total{status='error'}[1m]) * 60",
+          "legendFormat": "error",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Latency Percentiles",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(fare_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(fare_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(fare_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "p99",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    }
+  ]
+}
